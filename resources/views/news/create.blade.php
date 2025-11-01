@@ -312,6 +312,9 @@
     $(function () {
       $('#analyzeForm').submit(function (e) {
         e.preventDefault();
+
+        const $btn = $(this).find('button[type="submit"]');
+        $btn.prop('disabled', true).html('<i class="fa-solid fa-spinner fa-spin me-1"></i> Analyzing...');
         $('#loading').show();
         $('#result').addClass('d-none');
 
@@ -322,6 +325,7 @@
           success: function (res) {
             $('#loading').hide();
             $('#result').removeClass('d-none');
+            $btn.prop('disabled', false).html('<i class="fa-solid fa-brain me-1"></i> Analyze with AI');
 
             $('#verdictText').text(res.verdict)
               .attr('class', 'fw-bold text-capitalize text-' + getVerdictColor(res.verdict));
@@ -329,17 +333,18 @@
 
             const verdictClass = res.verdict ? res.verdict.replace(/\s/g, '') : 'Unverified';
             const newItem = `
-                            <div class="recent-item" onclick="this.classList.toggle('expanded')">
-                                <span class="text-content">${res.content}</span>
-                                <span class="verdict-badge verdict-${verdictClass}">
-                                    ${res.verdict}
-                                </span>
-                            </div>
-                        `;
+            <div class="recent-item" onclick="this.classList.toggle('expanded')">
+              <span class="text-content">${res.content}</span>
+              <span class="verdict-badge verdict-${verdictClass}">
+                ${res.verdict}
+              </span>
+            </div>
+          `;
             $('.recent-list').prepend(newItem);
           },
           error: function (err) {
             $('#loading').hide();
+            $btn.prop('disabled', false).html('<i class="fa-solid fa-brain me-1"></i> Analyze with AI');
             alert('Error: ' + err.responseText);
           }
         });
@@ -355,6 +360,7 @@
       }
     });
   </script>
+
 </body>
 
 </html>
