@@ -20,7 +20,6 @@
       font-family: 'Inter', sans-serif;
     }
 
-    /* 🌈 Gradient Navbar */
     .navbar {
       background: linear-gradient(90deg, #0d6efd, #6610f2);
       box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
@@ -31,7 +30,6 @@
       letter-spacing: 0.5px;
     }
 
-    /* 🧠 Cards */
     .card {
       border: none;
       border-radius: 18px;
@@ -47,15 +45,14 @@
     .result-card {
       background: #e8f7ff;
       border-left: 5px solid #0d6efd;
+      border-radius: 12px;
     }
 
-    /* 🏷️ Verdict badges */
     .verdict-badge {
       font-size: 0.85rem;
       padding: 0.25rem 0.6rem;
       border-radius: 6px;
       color: #fff;
-      white-space: nowrap;
       text-transform: capitalize;
     }
 
@@ -76,7 +73,6 @@
       background: #6c757d;
     }
 
-    /* 🕓 Recent Checks */
     .recent-list {
       max-height: 400px;
       overflow-y: auto;
@@ -105,7 +101,6 @@
       flex: 1;
       min-width: 200px;
       margin-right: 10px;
-      display: block;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -116,7 +111,12 @@
       overflow: visible;
     }
 
-    /* 🌈 Gradient Footer */
+    .progress {
+      height: 20px;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
     .footer-bottom {
       background: linear-gradient(90deg, #6610f2, #0d6efd);
       color: #fff;
@@ -125,7 +125,6 @@
       font-size: 0.85rem;
       margin-top: auto;
       position: relative;
-      overflow: hidden;
     }
 
     .footer-bottom small {
@@ -135,24 +134,7 @@
       color: rgba(255, 255, 255, 0.85);
     }
 
-    .footer-bottom a {
-      color: #fff;
-      text-decoration: none;
-      font-weight: 500;
-      transition: color 0.3s ease, transform 0.2s ease;
-    }
-
-    .footer-bottom a:hover {
-      color: #ffd700;
-      transform: scale(1.1);
-    }
-
-    .footer-social {
-      margin-top: 6px;
-    }
-
     .footer-social a {
-      display: inline-block;
       margin: 0 6px;
       font-size: 1.1rem;
       color: rgba(255, 255, 255, 0.9);
@@ -163,66 +145,7 @@
       color: #ffd700;
       transform: scale(1.1);
     }
-
-    /* Decorative line on top of footer */
-    .footer-bottom::before {
-      content: "";
-      position: absolute;
-      top: 0;
-      left: 50%;
-      width: 80%;
-      height: 1px;
-      background: rgba(255, 255, 255, 0.4);
-      transform: translateX(-50%);
-      border-radius: 50%;
-    }
-
-    /* ✅ Responsive */
-    @media (max-width: 768px) {
-
-      h4,
-      h5 {
-        font-size: 1.1rem;
-      }
-
-      .navbar-brand {
-        font-size: 1rem;
-      }
-
-      .card {
-        padding: 1rem;
-      }
-
-      textarea {
-        font-size: 0.9rem;
-      }
-
-      .recent-item span.text-content {
-        font-size: 0.85rem;
-      }
-    }
-
-    @media (max-width: 576px) {
-      .recent-list {
-        max-height: 300px;
-      }
-
-      .btn {
-        width: 100%;
-      }
-
-      .footer-bottom {
-        font-size: 0.8rem;
-        padding: 12px 6px;
-      }
-
-      .footer-social a {
-        font-size: 1rem;
-        margin: 0 4px;
-      }
-    }
   </style>
-
 </head>
 
 <body>
@@ -249,7 +172,7 @@
           <form id="analyzeForm">
             @csrf
             <textarea name="content" id="content" rows="6" class="form-control mb-3"
-              placeholder="Paste your content here..."></textarea>
+              placeholder="Paste or type your content here..."></textarea>
             <button type="submit" class="btn btn-success">
               <i class="fa-solid fa-brain me-1"></i> Analyze with AI
             </button>
@@ -261,11 +184,20 @@
           </div>
 
           <div id="result" class="result-card p-4 mt-4 d-none">
-            <h5><i class="fa-regular fa-lightbulb me-2"></i><strong>Verdict:</strong>
+            <h5>
+              <i class="fa-regular fa-lightbulb me-2"></i><strong>Verdict:</strong>
               <span id="verdictText" class="fw-bold"></span>
             </h5>
             <hr>
-            <h6><i class="fa-solid fa-comments me-2"></i>AI Explanation:</h6>
+            <h6><i class="fa-solid fa-gauge-high me-2"></i> AI Confidence:</h6>
+            <div class="progress my-2" title="AI confidence level">
+              <div id="confidenceBar" class="progress-bar bg-secondary progress-bar-striped progress-bar-animated"
+                style="width: 0%">0%</div>
+            </div>
+            <small id="confidenceLabel" class="text-muted fst-italic"></small>
+
+            <hr>
+            <h6><i class="fa-solid fa-comments me-2"></i> AI Explanation:</h6>
             <p id="aiResponse" class="mt-2"></p>
           </div>
         </div>
@@ -296,7 +228,6 @@
   <div class="footer-bottom">
     <div>&copy; {{ date('Y') }} <strong>Fake News Detector</strong></div>
     <small>Developed with 💙 by <strong>Shubham Goswami</strong></small>
-
     <div class="footer-social">
       <a href="https://wa.me/918299722527" target="_blank" title="WhatsApp"><i class="fab fa-whatsapp"></i></a>
       <a href="https://www.instagram.com/_i_am_shubham__/" target="_blank" title="Instagram"><i
@@ -327,19 +258,36 @@
             $('#result').removeClass('d-none');
             $btn.prop('disabled', false).html('<i class="fa-solid fa-brain me-1"></i> Analyze with AI');
 
-            $('#verdictText').text(res.verdict)
+            $('#verdictText')
+              .text(res.verdict)
               .attr('class', 'fw-bold text-capitalize text-' + getVerdictColor(res.verdict));
+
             $('#aiResponse').text(res.ai_response);
 
+            // Confidence bar update
+            const confidence = res.confidence || 0;
+            const $bar = $('#confidenceBar');
+            const $label = $('#confidenceLabel');
+            let color = 'bg-secondary';
+            let level = 'Low Confidence';
+
+            if (confidence >= 80) { color = 'bg-success'; level = 'High Confidence'; }
+            else if (confidence >= 60) { color = 'bg-warning'; level = 'Medium Confidence'; }
+            else { color = 'bg-danger'; level = 'Low Confidence'; }
+
+            $bar.removeClass().addClass('progress-bar ' + color).css('width', confidence + '%').text(confidence + '%');
+            $label.text(level);
+
+            // Add to Recent
             const verdictClass = res.verdict ? res.verdict.replace(/\s/g, '') : 'Unverified';
             const newItem = `
-            <div class="recent-item" onclick="this.classList.toggle('expanded')">
-              <span class="text-content">${res.content}</span>
-              <span class="verdict-badge verdict-${verdictClass}">
-                ${res.verdict}
-              </span>
-            </div>
-          `;
+              <div class="recent-item" onclick="this.classList.toggle('expanded')">
+                <span class="text-content">${res.content}</span>
+                <span class="verdict-badge verdict-${verdictClass}">
+                  ${res.verdict}
+                </span>
+              </div>
+            `;
             $('.recent-list').prepend(newItem);
           },
           error: function (err) {
@@ -362,5 +310,4 @@
   </script>
 
 </body>
-
 </html>
