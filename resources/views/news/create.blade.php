@@ -9,15 +9,23 @@
   {{-- Bootstrap + FontAwesome + jQuery --}}
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,
+<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'>
+<path fill='%2300c4ff' d='M208 0a56 56 0 0 0-56 56v24H120a72 72 0 0 0 0 144v24a56 56 0 0 0 56 56v24a56 56 0 0 0 112 0v-24h32a56 56 0 0 0 56-56v-24a72 72 0 0 0 0-144h-32V56a56 56 0 0 0-56-56z'/>
+</svg>">
+
   <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
   <style>
+    /* ====== Base Styles ====== */
     body {
       background-color: #f4f7fb;
       display: flex;
       flex-direction: column;
       min-height: 100vh;
       font-family: 'Inter', sans-serif;
+      transition: all 0.3s ease;
     }
 
     .navbar {
@@ -117,6 +125,15 @@
       overflow: hidden;
     }
 
+    .ai-explanation {
+      background: #f8f9fa;
+      border-left: 4px solid #0d6efd;
+      padding: 10px 12px;
+      border-radius: 8px;
+      color: #333;
+      white-space: pre-wrap;
+    }
+
     .footer-bottom {
       background: linear-gradient(90deg, #6610f2, #0d6efd);
       color: #fff;
@@ -145,6 +162,57 @@
       color: #ffd700;
       transform: scale(1.1);
     }
+
+    /* ====== 🌙 Dark Mode Fix ====== */
+    body.dark {
+      background-color: #121212;
+      color: #e6e6e6;
+    }
+
+    body.dark .card {
+      background: #1e1e1e;
+      color: #fff;
+    }
+
+    body.dark .result-card {
+      background: #2b2b2b;
+      border-left-color: #0dcaf0;
+      color: #f1f1f1;
+    }
+
+    body.dark .navbar {
+      background: linear-gradient(90deg, #0dcaf0, #6610f2);
+    }
+
+    body.dark textarea,
+    body.dark input,
+    body.dark .form-control {
+      background-color: #2c2c2c;
+      color: #f1f1f1;
+      border: 1px solid #444;
+    }
+
+    body.dark textarea::placeholder {
+      color: #aaa;
+    }
+
+    body.dark .ai-explanation {
+      background: #2b2b2b;
+      color: #e6e6e6;
+      border-left-color: #0dcaf0;
+    }
+
+    body.dark .recent-item {
+      border-bottom: 1px solid #333;
+    }
+
+    body.dark .recent-item:hover {
+      background-color: #2c2c2c;
+    }
+
+    .progress {
+      background-color: #2b2b2b;
+    }
   </style>
 </head>
 
@@ -152,10 +220,13 @@
 
   {{-- 🌈 NAVBAR --}}
   <nav class="navbar navbar-dark mb-4">
-    <div class="container-fluid">
+    <div class="container-fluid d-flex justify-content-between align-items-center">
       <a class="navbar-brand text-white" href="#">
         <i class="fa-solid fa-newspaper me-2"></i> Fake News Detector
       </a>
+      <button class="btn btn-sm btn-light" id="darkToggle" title="Toggle dark mode">
+        <i class="fa-solid fa-moon"></i>
+      </button>
     </div>
   </nav>
 
@@ -171,7 +242,7 @@
 
           <form id="analyzeForm">
             @csrf
-            <textarea name="content" id="content" rows="6" class="form-control mb-3"
+            <textarea name="content" id="content" rows="6" class="form-control mb-3" required
               placeholder="Paste or type your content here..."></textarea>
             <button type="submit" class="btn btn-success">
               <i class="fa-solid fa-brain me-1"></i> Analyze with AI
@@ -190,7 +261,7 @@
             </h5>
             <hr>
             <h6><i class="fa-solid fa-gauge-high me-2"></i> AI Confidence:</h6>
-            <div class="progress my-2" title="AI confidence level">
+            <div class="progress my-2">
               <div id="confidenceBar" class="progress-bar bg-secondary progress-bar-striped progress-bar-animated"
                 style="width: 0%">0%</div>
             </div>
@@ -198,7 +269,11 @@
 
             <hr>
             <h6><i class="fa-solid fa-comments me-2"></i> AI Explanation:</h6>
-            <p id="aiResponse" class="mt-2"></p>
+            <p id="aiResponse" class="ai-explanation mt-2"></p>
+
+            <button class="btn btn-outline-primary btn-sm mt-2" id="shareBtn">
+              <i class="fa-solid fa-share-nodes"></i> Share Result
+            </button>
           </div>
         </div>
       </div>
@@ -241,6 +316,13 @@
   {{-- AJAX --}}
   <script>
     $(function () {
+      // 🌙 Dark mode toggle
+      $('#darkToggle').click(() => $('body').toggleClass('dark'));
+
+      // Tooltip activation
+      new bootstrap.Tooltip(document.body, { selector: '[data-bs-toggle="tooltip"]' });
+
+      // 🔍 Analyze
       $('#analyzeForm').submit(function (e) {
         e.preventDefault();
 
@@ -258,8 +340,8 @@
             $('#result').removeClass('d-none');
             $btn.prop('disabled', false).html('<i class="fa-solid fa-brain me-1"></i> Analyze with AI');
 
-            $('#verdictText')
-              .text(res.verdict)
+            // Verdict with emoji
+            $('#verdictText').html(getVerdictEmoji(res.verdict) + ' ' + res.verdict)
               .attr('class', 'fw-bold text-capitalize text-' + getVerdictColor(res.verdict));
 
             $('#aiResponse').text(res.ai_response);
@@ -275,7 +357,8 @@
             else if (confidence >= 60) { color = 'bg-warning'; level = 'Medium Confidence'; }
             else { color = 'bg-danger'; level = 'Low Confidence'; }
 
-            $bar.removeClass().addClass('progress-bar ' + color).css('width', confidence + '%').text(confidence + '%');
+            $bar.removeClass().addClass('progress-bar ' + color)
+              .css('width', confidence + '%').text(confidence + '%');
             $label.text(level);
 
             // Add to Recent
@@ -283,11 +366,8 @@
             const newItem = `
               <div class="recent-item" onclick="this.classList.toggle('expanded')">
                 <span class="text-content">${res.content}</span>
-                <span class="verdict-badge verdict-${verdictClass}">
-                  ${res.verdict}
-                </span>
-              </div>
-            `;
+                <span class="verdict-badge verdict-${verdictClass}">${res.verdict}</span>
+              </div>`;
             $('.recent-list').prepend(newItem);
           },
           error: function (err) {
@@ -306,8 +386,25 @@
           default: return 'secondary';
         }
       }
+
+      function getVerdictEmoji(verdict) {
+        switch (verdict) {
+          case 'False': return '❌';
+          case 'Misleading': return '⚠️';
+          case 'Likely True': return '✅';
+          default: return '❓';
+        }
+      }
+
+      // 📋 Share result
+      $('#shareBtn').click(() => {
+        const summary = `Verdict: ${$('#verdictText').text()} | Confidence: ${$('#confidenceBar').text()} | ${$('#aiResponse').text()}`;
+        navigator.clipboard.writeText(summary);
+        alert('AI analysis copied to clipboard!');
+      });
     });
   </script>
 
 </body>
+
 </html>

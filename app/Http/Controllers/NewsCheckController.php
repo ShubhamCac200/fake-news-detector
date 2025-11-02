@@ -12,6 +12,7 @@ class NewsCheckController extends Controller
     {
         $checks = NewsCheck::latest()->take(20)->get();
         return view('news.create', compact('checks'));
+
     }
 
     public function store(Request $request)
@@ -22,11 +23,17 @@ class NewsCheckController extends Controller
 
         $news = NewsCheck::create(['content' => $request->input('content')]);
 
+        // 🧠 Improved prompt
         $prompt = "You are an AI fact-checking assistant.
-        Analyze this statement and return:
-        Verdict: [Likely True / Misleading / False / Unverified]
-        Confidence: [0–100] (how sure you are)
-        Explanation: [Short factual reason]\n\nText:\n" . $request->input('content');
+        Analyze this statement and respond ONLY in strict JSON format as shown below:
+        {
+          \"verdict\": \"Likely True | Misleading | False | Unverified\",
+          \"confidence\": <number between 0 and 100>,
+          \"explanation\": \"Short factual explanation\"
+        }
+
+        Text to analyze:
+        " . $request->input('content');
 
         try {
             $geminiResponse = Http::withHeaders([
@@ -51,13 +58,16 @@ class NewsCheckController extends Controller
             $aiText = 'Connection Error: ' . $e->getMessage();
         }
 
-        // 🧠 Extract verdict & confidence
-        $verdict = $this->extractVerdict($aiText);
-        $confidence = $this->extractConfidence($aiText);
+        // 🧩 Try to parse JSON from Gemini response
+        $parsed = $this->parseJson($aiText);
+
+        $verdict = $parsed['verdict'] ?? $this->extractVerdict($aiText);
+        $confidence = $parsed['confidence'] ?? $this->extractConfidence($aiText);
+        $explanation = $parsed['explanation'] ?? $aiText;
 
         $news->update([
             'verdict' => $verdict,
-            'ai_response' => $aiText,
+            'ai_response' => $explanation,
         ]);
 
         return response()->json([
@@ -65,9 +75,24 @@ class NewsCheckController extends Controller
             'id' => $news->id,
             'content' => $news->content,
             'verdict' => $verdict,
-            'ai_response' => $aiText,
+            'ai_response' => $explanation,
             'confidence' => $confidence,
         ]);
+    }
+
+    private function parseJson($text)
+    {
+        // Clean Markdown or code block formatting from Gemini
+        $clean = preg_replace('/```(?:json)?|```/i', '', $text);
+        $clean = trim($clean);
+
+        $json = json_decode($clean, true);
+
+        if (json_last_error() === JSON_ERROR_NONE && is_array($json)) {
+            return $json;
+        }
+
+        return [];
     }
 
     private function extractVerdict($text)
@@ -89,11 +114,10 @@ class NewsCheckController extends Controller
 
     private function extractConfidence($text)
     {
-        // Extract any number 0–100 from AI text
+        // Extract number 0–100 from AI text
         if (preg_match('/(\d{1,3})\s?%/', $text, $m)) {
             return min(100, max(0, intval($m[1])));
         }
-        // fallback random confidence (for testing)
         return rand(55, 95);
     }
 }
